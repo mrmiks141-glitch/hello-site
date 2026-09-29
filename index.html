@@ -1,22 +1,421 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Hello World</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Platformer</title>
 
   <style>
+    * {
+      box-sizing: border-box;
+      touch-action: none;
+    }
+
     body {
       margin: 0;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      overflow: hidden;
+      background: #111;
       font-family: Arial, sans-serif;
+    }
+
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      background: linear-gradient(#87ceeb, #dff6ff);
+    }
+
+    #joystick {
+      position: fixed;
+      left: 25px;
+      bottom: 25px;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.25);
+      border: 3px solid rgba(255,255,255,0.5);
+    }
+
+    #stick {
+      position: absolute;
+      left: 35px;
+      top: 35px;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.8);
+    }
+
+    #jumpButton {
+      position: fixed;
+      right: 30px;
+      bottom: 35px;
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255,255,255,0.8);
+      font-size: 32px;
+      font-weight: bold;
+    }
+
+    #info {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      color: white;
+      text-shadow: 0 2px 5px black;
+      font-size: 18px;
     }
   </style>
 </head>
 
 <body>
-  <h1>Hello World</h1>
+
+<canvas id="game"></canvas>
+
+<div id="info">
+  Пройди вправо →
+</div>
+
+<div id="joystick">
+  <div id="stick"></div>
+</div>
+
+<button id="jumpButton">↑</button>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+function resize() {
+  canvas.width = innerWidth;
+  canvas.height = innerHeight;
+}
+resize();
+
+window.addEventListener("resize", resize);
+
+
+// =====================
+// ИГРОК
+// =====================
+
+const player = {
+  x: 80,
+  y: 100,
+  width: 40,
+  height: 50,
+
+  vx: 0,
+  vy: 0,
+
+  speed: 0.8,
+  maxSpeed: 6,
+
+  jumpPower: 14,
+
+  onGround: false
+};
+
+
+// =====================
+// ФИЗИКА
+// =====================
+
+const gravity = 0.7;
+const friction = 0.85;
+
+
+// =====================
+// ПЛАТФОРМЫ
+// =====================
+
+const platforms = [
+  {x: 0, y: 500, w: 700, h: 80},
+  {x: 300, y: 400, w: 180, h: 30},
+  {x: 600, y: 340, w: 180, h: 30},
+  {x: 900, y: 430, w: 220, h: 30},
+  {x: 1200, y: 350, w: 170, h: 30},
+  {x: 1500, y: 280, w: 200, h: 30},
+  {x: 1800, y: 420, w: 500, h: 80}
+];
+
+
+// =====================
+// УПРАВЛЕНИЕ
+// =====================
+
+let moveX = 0;
+
+const keys = {};
+
+window.addEventListener("keydown", e => {
+  keys[e.key.toLowerCase()] = true;
+
+  if (
+    e.key === "ArrowUp" ||
+    e.key === " " ||
+    e.key.toLowerCase() === "w"
+  ) {
+    jump();
+  }
+});
+
+window.addEventListener("keyup", e => {
+  keys[e.key.toLowerCase()] = false;
+});
+
+
+// =====================
+// ПРЫЖОК
+// =====================
+
+function jump() {
+  if (player.onGround) {
+    player.vy = -player.jumpPower;
+    player.onGround = false;
+  }
+}
+
+document.getElementById("jumpButton")
+  .addEventListener("pointerdown", jump);
+
+
+// =====================
+// ДЖОЙСТИК
+// =====================
+
+const joystick = document.getElementById("joystick");
+const stick = document.getElementById("stick");
+
+let joystickActive = false;
+
+joystick.addEventListener("pointerdown", e => {
+  joystickActive = true;
+  joystick.setPointerCapture(e.pointerId);
+  updateJoystick(e);
+});
+
+joystick.addEventListener("pointermove", e => {
+  if (joystickActive) {
+    updateJoystick(e);
+  }
+});
+
+joystick.addEventListener("pointerup", () => {
+  joystickActive = false;
+  moveX = 0;
+
+  stick.style.left = "35px";
+  stick.style.top = "35px";
+});
+
+
+function updateJoystick(e) {
+
+  const rect = joystick.getBoundingClientRect();
+
+  const centerX = rect.width / 2;
+  const centerY = rect.height / 2;
+
+  let x = e.clientX - rect.left - centerX;
+  let y = e.clientY - rect.top - centerY;
+
+  const maxDistance = 40;
+
+  const distance = Math.sqrt(x*x + y*y);
+
+  if (distance > maxDistance) {
+    x = x / distance * maxDistance;
+    y = y / distance * maxDistance;
+  }
+
+  stick.style.left = (centerX + x - 25) + "px";
+  stick.style.top = (centerY + y - 25) + "px";
+
+  moveX = x / maxDistance;
+}
+
+
+// =====================
+// КАМЕРА
+// =====================
+
+let cameraX = 0;
+
+
+// =====================
+// ОБНОВЛЕНИЕ
+// =====================
+
+function update() {
+
+  // клавиатура
+  let keyboardX = 0;
+
+  if (keys["a"] || keys["arrowleft"])
+    keyboardX = -1;
+
+  if (keys["d"] || keys["arrowright"])
+    keyboardX = 1;
+
+
+  let input = moveX;
+
+  if (keyboardX !== 0)
+    input = keyboardX;
+
+
+  player.vx += input * player.speed;
+
+  if (player.vx > player.maxSpeed)
+    player.vx = player.maxSpeed;
+
+  if (player.vx < -player.maxSpeed)
+    player.vx = -player.maxSpeed;
+
+
+  if (Math.abs(input) < 0.05)
+    player.vx *= friction;
+
+
+  player.vy += gravity;
+
+
+  player.x += player.vx;
+
+
+  // горизонтальные столкновения можно добавить позже
+
+
+  player.y += player.vy;
+
+  player.onGround = false;
+
+
+  for (const p of platforms) {
+
+    // падение сверху
+    if (
+      player.x + player.width > p.x &&
+      player.x < p.x + p.w &&
+      player.y + player.height > p.y &&
+      player.y + player.height - player.vy <= p.y &&
+      player.vy >= 0
+    ) {
+
+      player.y = p.y - player.height;
+      player.vy = 0;
+      player.onGround = true;
+
+    }
+
+  }
+
+
+  // падение вниз
+  if (player.y > canvas.height + 300) {
+
+    player.x = 80;
+    player.y = 100;
+
+    player.vx = 0;
+    player.vy = 0;
+
+  }
+
+
+  // камера следует за игроком
+  const targetCamera =
+    player.x - canvas.width * 0.4;
+
+  cameraX +=
+    (targetCamera - cameraX) * 0.08;
+
+  if (cameraX < 0)
+    cameraX = 0;
+
+}
+
+
+// =====================
+// ОТРИСОВКА
+// =====================
+
+function draw() {
+
+  ctx.clearRect(
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+
+  ctx.save();
+
+  ctx.translate(-cameraX, 0);
+
+
+  // платформы
+  ctx.fillStyle = "#3b8d3b";
+
+  for (const p of platforms) {
+
+    ctx.fillRect(
+      p.x,
+      p.y,
+      p.w,
+      p.h
+    );
+
+  }
+
+
+  // игрок
+  ctx.fillStyle = "#ff5c5c";
+
+  ctx.fillRect(
+    player.x,
+    player.y,
+    player.width,
+    player.height
+  );
+
+
+  // глаза
+  ctx.fillStyle = "white";
+
+  ctx.fillRect(
+    player.x + 25,
+    player.y + 10,
+    8,
+    8
+  );
+
+
+  ctx.restore();
+
+}
+
+
+// =====================
+// GAME LOOP
+// =====================
+
+function gameLoop() {
+
+  update();
+  draw();
+
+  requestAnimationFrame(gameLoop);
+
+}
+
+gameLoop();
+
+</script>
+
 </body>
 </html>
