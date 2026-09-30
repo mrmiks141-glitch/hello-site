@@ -1,421 +1,619 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Platformer</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>3D-конструктор башен — 30 брусков</title>
+<style>
+  :root{
+    --bg:#eef0f2;
+    --panel:rgba(255,255,255,.92);
+    --border:#d8dce1;
+    --text:#17191c;
+    --muted:#72777f;
+    --accent:#17191c;
+  }
+  *{box-sizing:border-box}
+  html,body{
+    margin:0;width:100%;height:100%;overflow:hidden;
+    font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    background:var(--bg);color:var(--text);
+    touch-action:none;
+  }
+  #app{position:relative;width:100%;height:100%}
+  #viewport{position:absolute;inset:0}
+  canvas{display:block;width:100%;height:100%}
 
-  <style>
-    * {
-      box-sizing: border-box;
-      touch-action: none;
-    }
+  .topbar{
+    position:absolute;left:12px;right:12px;top:12px;
+    z-index:10;display:flex;gap:8px;align-items:center;
+    padding:10px 12px;border:1px solid var(--border);
+    border-radius:16px;background:var(--panel);
+    backdrop-filter:blur(14px);box-shadow:0 10px 30px #00000012;
+  }
+  .brand{font-weight:900;font-size:16px;margin-right:auto;white-space:nowrap}
+  .counter{
+    padding:8px 11px;border:1px solid var(--border);border-radius:11px;
+    background:white;font-size:13px;font-weight:800;white-space:nowrap
+  }
 
-    body {
-      margin: 0;
-      overflow: hidden;
-      background: #111;
-      font-family: Arial, sans-serif;
-    }
+  button{
+    border:0;border-radius:11px;padding:9px 12px;
+    background:var(--accent);color:#fff;font-weight:800;font-size:13px;
+    cursor:pointer;min-height:38px
+  }
+  button.secondary{
+    background:#fff;color:var(--text);border:1px solid var(--border)
+  }
+  button:active{transform:translateY(1px)}
+  button:disabled{opacity:.42;cursor:default}
 
-    canvas {
-      display: block;
-      width: 100vw;
-      height: 100vh;
-      background: linear-gradient(#87ceeb, #dff6ff);
-    }
+  .panel{
+    position:absolute;z-index:10;background:var(--panel);
+    border:1px solid var(--border);border-radius:16px;
+    backdrop-filter:blur(14px);box-shadow:0 10px 30px #00000012;
+  }
 
-    #joystick {
-      position: fixed;
-      left: 25px;
-      bottom: 25px;
-      width: 120px;
-      height: 120px;
-      border-radius: 50%;
-      background: rgba(0,0,0,0.25);
-      border: 3px solid rgba(255,255,255,0.5);
-    }
+  #leftPanel{
+    left:12px;bottom:12px;width:228px;padding:12px
+  }
+  .panelTitle{font-weight:900;font-size:14px;margin-bottom:9px}
+  .small{font-size:12px;line-height:1.35;color:var(--muted)}
+  .bigAdd{width:100%;margin-top:10px;font-size:14px}
 
-    #stick {
-      position: absolute;
-      left: 35px;
-      top: 35px;
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.8);
-    }
+  #tools{
+    right:12px;bottom:12px;width:220px;padding:12px
+  }
+  .gridButtons{
+    display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px
+  }
+  .wide{grid-column:1/-1}
+  #selectedInfo{
+    margin-top:9px;padding:8px 10px;border:1px solid var(--border);
+    background:white;border-radius:10px;font-size:12px;line-height:1.4
+  }
 
-    #jumpButton {
-      position: fixed;
-      right: 30px;
-      bottom: 35px;
-      width: 90px;
-      height: 90px;
-      border-radius: 50%;
-      border: none;
-      background: rgba(255,255,255,0.8);
-      font-size: 32px;
-      font-weight: bold;
-    }
+  #hint{
+    position:absolute;z-index:9;left:50%;top:86px;transform:translateX(-50%);
+    padding:8px 12px;border-radius:999px;background:#ffffffdd;
+    border:1px solid var(--border);font-size:12px;color:#444;
+    pointer-events:none;white-space:nowrap;box-shadow:0 6px 18px #00000010
+  }
 
-    #info {
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      color: white;
-      text-shadow: 0 2px 5px black;
-      font-size: 18px;
-    }
-  </style>
+  #levelBadge{
+    position:absolute;z-index:9;right:14px;top:82px;
+    padding:8px 11px;border-radius:12px;background:#ffffffdd;
+    border:1px solid var(--border);font-size:12px;font-weight:800;
+    pointer-events:none
+  }
+
+  #toast{
+    position:absolute;z-index:20;left:50%;bottom:24px;transform:translateX(-50%);
+    padding:10px 14px;border-radius:12px;background:#151515;color:white;
+    opacity:0;pointer-events:none;transition:opacity .18s;font-size:13px
+  }
+  #toast.show{opacity:1}
+
+  @media(max-width:720px){
+    .topbar{left:7px;right:7px;top:7px;padding:7px;gap:5px;border-radius:13px}
+    .brand{font-size:14px}
+    .counter{padding:7px 8px;font-size:12px}
+    .topbar button{padding:7px 9px;font-size:12px;min-height:34px}
+    #hint{top:59px;max-width:94%;overflow:hidden;text-overflow:ellipsis}
+    #levelBadge{top:97px;right:8px}
+    #leftPanel{left:7px;bottom:7px;width:160px;padding:9px;border-radius:13px}
+    #tools{right:7px;bottom:7px;width:174px;padding:9px;border-radius:13px}
+    .panelTitle{font-size:13px;margin-bottom:6px}
+    .small{font-size:10px}
+    button{padding:8px 7px;font-size:11px;min-height:34px}
+    #selectedInfo{font-size:10px;padding:6px}
+    .gridButtons{gap:5px;margin-top:6px}
+  }
+</style>
 </head>
-
 <body>
+<div id="app">
+  <div id="viewport"></div>
 
-<canvas id="game"></canvas>
+  <div class="topbar">
+    <div class="brand">3D-конструктор башен</div>
+    <div class="counter">На поле: <span id="usedCount">0</span>/30</div>
+    <button class="secondary" id="viewBtn">Вид</button>
+    <button id="resetBtn">Сбросить</button>
+  </div>
 
-<div id="info">
-  Пройди вправо →
+  <div id="hint">Тяни брусок пальцем/мышью • пустое место — вращение камеры • колесо/щипок — масштаб</div>
+  <div id="levelBadge">Этаж: <span id="floorText">—</span></div>
+
+  <div class="panel" id="leftPanel">
+    <div class="panelTitle">Брусочки</div>
+    <div class="small">
+      Каждый брусок имеет размер 3×1×1. Все позиции привязываются к сетке.
+    </div>
+    <button class="bigAdd" id="addBtn">+ Добавить брусок</button>
+    <div class="small" style="margin-top:8px">
+      Осталось: <b id="remainingCount">30</b>
+    </div>
+  </div>
+
+  <div class="panel" id="tools">
+    <div class="panelTitle">Выбранный брусок</div>
+    <div class="small">Нажми на брусок, чтобы выбрать его.</div>
+    <div class="gridButtons">
+      <button class="secondary" id="rotateBtn">↻ 90°</button>
+      <button class="secondary" id="raiseBtn">↑ Этаж</button>
+      <button class="secondary" id="lowerBtn">↓ Этаж</button>
+      <button class="secondary" id="duplicateBtn">Копия</button>
+      <button class="wide" id="removeBtn">Вернуть в запас</button>
+    </div>
+    <div id="selectedInfo">Ничего не выбрано</div>
+  </div>
+
+  <div id="toast"></div>
 </div>
 
-<div id="joystick">
-  <div id="stick"></div>
-</div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/controls/OrbitControls.js';
 
-<button id="jumpButton">↑</button>
+const TOTAL = 30;
+const BLOCK_L = 3;
+const BLOCK_W = 1;
+const BLOCK_H = 1;
+const GRID_SIZE = 18;
+const SNAP = 1;
 
-<script>
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
+const viewport = document.getElementById('viewport');
+const usedCount = document.getElementById('usedCount');
+const remainingCount = document.getElementById('remainingCount');
+const floorText = document.getElementById('floorText');
+const selectedInfo = document.getElementById('selectedInfo');
 
-function resize() {
-  canvas.width = innerWidth;
-  canvas.height = innerHeight;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xeff1f3);
+
+const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.1, 200);
+camera.position.set(13, 12, 15);
+
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+viewport.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = .08;
+controls.target.set(0,2,0);
+controls.minDistance = 5;
+controls.maxDistance = 38;
+controls.maxPolarAngle = Math.PI * .48;
+controls.enablePan = true;
+
+scene.add(new THREE.HemisphereLight(0xffffff,0xb2bac4,2.2));
+
+const sun = new THREE.DirectionalLight(0xffffff,2.4);
+sun.position.set(8,16,10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.left = -20;
+sun.shadow.camera.right = 20;
+sun.shadow.camera.top = 20;
+sun.shadow.camera.bottom = -20;
+scene.add(sun);
+
+// Ground
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(GRID_SIZE,GRID_SIZE),
+  new THREE.MeshStandardMaterial({color:0xf8f8f6,roughness:.92,metalness:0})
+);
+ground.rotation.x = -Math.PI/2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// Grid
+const grid = new THREE.GridHelper(GRID_SIZE, GRID_SIZE, 0x858b92, 0xcfd3d7);
+grid.position.y = 0.003;
+scene.add(grid);
+
+// subtle platform
+const platform = new THREE.Mesh(
+  new THREE.BoxGeometry(GRID_SIZE+.4,.3,GRID_SIZE+.4),
+  new THREE.MeshStandardMaterial({color:0xd8d9d5,roughness:.85})
+);
+platform.position.y = -.16;
+platform.receiveShadow = true;
+scene.add(platform);
+
+// Wood textures procedurally via canvas
+function makeWoodTexture(){
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 128;
+  const ctx = c.getContext('2d');
+  const g = ctx.createLinearGradient(0,0,0,c.height);
+  g.addColorStop(0,'#e5bd82');
+  g.addColorStop(.45,'#cf9656');
+  g.addColorStop(1,'#b97739');
+  ctx.fillStyle = g;
+  ctx.fillRect(0,0,c.width,c.height);
+
+  ctx.globalAlpha=.2;
+  ctx.strokeStyle='#75451f';
+  for(let i=0;i<28;i++){
+    ctx.beginPath();
+    let y = Math.random()*c.height;
+    ctx.moveTo(0,y);
+    for(let x=0;x<=c.width;x+=20){
+      ctx.lineTo(x,y+Math.sin(x*.035+i)*2.5+Math.random()*1.5);
+    }
+    ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(1.4,1);
+  return tex;
 }
-resize();
+const woodTexture = makeWoodTexture();
 
-window.addEventListener("resize", resize);
+const baseMaterial = new THREE.MeshStandardMaterial({
+  map:woodTexture,
+  color:0xffffff,
+  roughness:.72,
+  metalness:0
+});
+const selectedMaterial = new THREE.MeshStandardMaterial({
+  map:woodTexture,
+  color:0xffe8a8,
+  emissive:0x382600,
+  emissiveIntensity:.25,
+  roughness:.68
+});
 
+const edgeMaterial = new THREE.LineBasicMaterial({color:0x4e2e16});
+const blockGeometry = new THREE.BoxGeometry(BLOCK_L,BLOCK_H,BLOCK_W);
+blockGeometry.translate(0,BLOCK_H/2,0);
 
-// =====================
-// ИГРОК
-// =====================
+let blocks = [];
+let selected = null;
+let nextId = 1;
 
-const player = {
-  x: 80,
-  y: 100,
-  width: 40,
-  height: 50,
+// Selection outline box
+const selectionBox = new THREE.BoxHelper(undefined,0x111111);
+selectionBox.visible=false;
+scene.add(selectionBox);
 
-  vx: 0,
-  vy: 0,
+function updateUI(){
+  usedCount.textContent = blocks.length;
+  remainingCount.textContent = TOTAL - blocks.length;
 
-  speed: 0.8,
-  maxSpeed: 6,
+  const has = !!selected;
+  for(const id of ['rotateBtn','raiseBtn','lowerBtn','removeBtn','duplicateBtn']){
+    document.getElementById(id).disabled = !has || (id==='duplicateBtn' && blocks.length>=TOTAL);
+  }
+  document.getElementById('addBtn').disabled = blocks.length>=TOTAL;
 
-  jumpPower: 14,
+  if(selected){
+    floorText.textContent = Math.round(selected.position.y);
+    selectedInfo.innerHTML =
+      `<b>#${selected.userData.id}</b><br>`+
+      `X: ${selected.position.x.toFixed(0)} &nbsp; `+
+      `Z: ${selected.position.z.toFixed(0)}<br>`+
+      `Этаж: ${selected.position.y.toFixed(0)} &nbsp; `+
+      `Поворот: ${selected.userData.rot===0?'0°':'90°'}`;
+  }else{
+    floorText.textContent='—';
+    selectedInfo.textContent='Ничего не выбрано';
+  }
+}
 
-  onGround: false
+function toast(text){
+  const el=document.getElementById('toast');
+  el.textContent=text;el.classList.add('show');
+  clearTimeout(el._t);
+  el._t=setTimeout(()=>el.classList.remove('show'),1200);
+}
+
+function snap(v){ return Math.round(v/SNAP)*SNAP; }
+
+function blockFootprint(mesh, pos=mesh.position, rot=mesh.userData.rot){
+  const halfX = (rot===0 ? BLOCK_L : BLOCK_W)/2;
+  const halfZ = (rot===0 ? BLOCK_W : BLOCK_L)/2;
+  return {
+    minX:pos.x-halfX, maxX:pos.x+halfX,
+    minZ:pos.z-halfZ, maxZ:pos.z+halfZ,
+    minY:pos.y, maxY:pos.y+BLOCK_H
+  };
+}
+
+function overlaps(a,b,eps=.02){
+  return a.minX < b.maxX-eps && a.maxX > b.minX+eps &&
+         a.minZ < b.maxZ-eps && a.maxZ > b.minZ+eps &&
+         a.minY < b.maxY-eps && a.maxY > b.minY+eps;
+}
+
+function validPosition(mesh,pos=mesh.position,rot=mesh.userData.rot){
+  const f=blockFootprint(mesh,pos,rot);
+  const lim=GRID_SIZE/2;
+  if(f.minX < -lim || f.maxX > lim || f.minZ < -lim || f.maxZ > lim || pos.y<0) return false;
+
+  for(const other of blocks){
+    if(other===mesh) continue;
+    if(overlaps(f,blockFootprint(other))) return false;
+  }
+  return true;
+}
+
+function nearestFreePosition(startY=0){
+  // Try a compact spiral on each level.
+  for(let y=startY;y<=10;y++){
+    for(let r=0;r<=7;r++){
+      for(let x=-r;x<=r;x++){
+        for(const z of [-r,r]){
+          const p=new THREE.Vector3(x,y,z);
+          const dummy={position:p,userData:{rot:0}};
+          let f={
+            minX:p.x-BLOCK_L/2,maxX:p.x+BLOCK_L/2,
+            minZ:p.z-BLOCK_W/2,maxZ:p.z+BLOCK_W/2,
+            minY:p.y,maxY:p.y+BLOCK_H
+          };
+          const lim=GRID_SIZE/2;
+          if(f.minX < -lim || f.maxX > lim || f.minZ < -lim || f.maxZ > lim) continue;
+          if(!blocks.some(o=>overlaps(f,blockFootprint(o)))) return p;
+        }
+      }
+      for(let z=-r+1;z<=r-1;z++){
+        for(const x of [-r,r]){
+          const p=new THREE.Vector3(x,y,z);
+          const f={
+            minX:p.x-BLOCK_L/2,maxX:p.x+BLOCK_L/2,
+            minZ:p.z-BLOCK_W/2,maxZ:p.z+BLOCK_W/2,
+            minY:p.y,maxY:p.y+BLOCK_H
+          };
+          if(!blocks.some(o=>overlaps(f,blockFootprint(o)))) return p;
+        }
+      }
+    }
+  }
+  return new THREE.Vector3(0,0,0);
+}
+
+function createBlock(position=null,rot=0){
+  if(blocks.length>=TOTAL){ toast('Все 30 брусков уже использованы'); return null; }
+
+  const group = new THREE.Group();
+  group.userData.isBlock=true;
+  group.userData.id=nextId++;
+  group.userData.rot=rot;
+
+  const mesh = new THREE.Mesh(blockGeometry,baseMaterial.clone());
+  mesh.castShadow=true;
+  mesh.receiveShadow=true;
+  mesh.userData.parentBlock=group;
+  group.add(mesh);
+
+  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(blockGeometry),edgeMaterial);
+  edges.userData.parentBlock=group;
+  group.add(edges);
+
+  scene.add(group);
+  blocks.push(group);
+
+  if(position) group.position.copy(position);
+  else group.position.copy(nearestFreePosition(0));
+
+  group.rotation.y = rot===0 ? 0 : Math.PI/2;
+  selectBlock(group);
+  updateUI();
+  return group;
+}
+
+function selectBlock(b){
+  if(selected){
+    selected.children[0].material.color.set(0xffffff);
+    selected.children[0].material.emissive.set(0x000000);
+    selected.children[0].material.emissiveIntensity=0;
+  }
+  selected=b;
+  if(selected){
+    selected.children[0].material.color.set(0xffe8a8);
+    selected.children[0].material.emissive.set(0x382600);
+    selected.children[0].material.emissiveIntensity=.25;
+    selectionBox.setFromObject(selected);
+    selectionBox.visible=true;
+  }else{
+    selectionBox.visible=false;
+  }
+  updateUI();
+}
+
+function refreshSelectionBox(){
+  if(selected && selectionBox.visible) selectionBox.setFromObject(selected);
+}
+
+function rotateSelected(){
+  if(!selected) return;
+  const oldRot=selected.userData.rot;
+  const newRot=oldRot===0?1:0;
+  if(validPosition(selected,selected.position,newRot)){
+    selected.userData.rot=newRot;
+    selected.rotation.y=newRot===0?0:Math.PI/2;
+    refreshSelectionBox();
+    updateUI();
+  } else toast('Здесь не хватает места для поворота');
+}
+
+function moveLevel(delta){
+  if(!selected) return;
+  const old=selected.position.clone();
+  const np=old.clone(); np.y=Math.max(0,snap(np.y+delta));
+  if(validPosition(selected,np,selected.userData.rot)){
+    selected.position.copy(np);
+    refreshSelectionBox();updateUI();
+  }else toast('На этом этаже место занято');
+}
+
+function removeSelected(){
+  if(!selected)return;
+  const victim=selected;
+  selectBlock(null);
+  blocks=blocks.filter(b=>b!==victim);
+  scene.remove(victim);
+  updateUI();
+}
+
+function duplicateSelected(){
+  if(!selected || blocks.length>=TOTAL)return;
+  const pos=selected.position.clone();
+  pos.x+=1;
+  const clone=createBlock(nearestFreePosition(Math.round(selected.position.y)),selected.userData.rot);
+  if(clone) updateUI();
+}
+
+function resetAll(){
+  for(const b of blocks) scene.remove(b);
+  blocks=[];
+  nextId=1;
+  selectBlock(null);
+  updateUI();
+}
+
+// Raycast & dragging
+const raycaster=new THREE.Raycaster();
+const pointer=new THREE.Vector2();
+const dragPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
+const hitPoint=new THREE.Vector3();
+let dragging=false;
+let dragBlock=null;
+let dragOffset=new THREE.Vector3();
+let lastGood=new THREE.Vector3();
+let pointerDownPos={x:0,y:0};
+let downHitBlock=null;
+
+function pointerToRay(e){
+  const r=renderer.domElement.getBoundingClientRect();
+  pointer.x=((e.clientX-r.left)/r.width)*2-1;
+  pointer.y=-((e.clientY-r.top)/r.height)*2+1;
+  raycaster.setFromCamera(pointer,camera);
+}
+
+function blockFromObject(obj){
+  let o=obj;
+  while(o){
+    if(o.userData?.isBlock) return o;
+    if(o.userData?.parentBlock) return o.userData.parentBlock;
+    o=o.parent;
+  }
+  return null;
+}
+
+renderer.domElement.addEventListener('pointerdown',e=>{
+  pointerDownPos={x:e.clientX,y:e.clientY};
+  pointerToRay(e);
+  const hits=raycaster.intersectObjects(blocks,true);
+  downHitBlock = hits.length ? blockFromObject(hits[0].object) : null;
+
+  if(downHitBlock){
+    selectBlock(downHitBlock);
+    dragBlock=downHitBlock;
+    lastGood.copy(dragBlock.position);
+    dragPlane.set(new THREE.Vector3(0,1,0),-dragBlock.position.y);
+    if(raycaster.ray.intersectPlane(dragPlane,hitPoint)){
+      dragOffset.copy(dragBlock.position).sub(hitPoint);
+    }else dragOffset.set(0,0,0);
+    dragging=true;
+    controls.enabled=false;
+    renderer.domElement.setPointerCapture?.(e.pointerId);
+  }
+});
+
+renderer.domElement.addEventListener('pointermove',e=>{
+  if(!dragging || !dragBlock)return;
+  pointerToRay(e);
+  dragPlane.set(new THREE.Vector3(0,1,0),-dragBlock.position.y);
+  if(raycaster.ray.intersectPlane(dragPlane,hitPoint)){
+    const candidate=hitPoint.clone().add(dragOffset);
+    candidate.x=snap(candidate.x);
+    candidate.z=snap(candidate.z);
+    candidate.y=dragBlock.position.y;
+
+    if(validPosition(dragBlock,candidate,dragBlock.userData.rot)){
+      dragBlock.position.copy(candidate);
+      lastGood.copy(candidate);
+    }else{
+      dragBlock.position.copy(lastGood);
+    }
+    refreshSelectionBox();
+    updateUI();
+  }
+});
+
+function endPointer(e){
+  if(dragging){
+    dragging=false;
+    controls.enabled=true;
+    dragBlock=null;
+  }else{
+    const dist=Math.hypot(e.clientX-pointerDownPos.x,e.clientY-pointerDownPos.y);
+    if(dist<6 && !downHitBlock) selectBlock(null);
+  }
+  downHitBlock=null;
+}
+renderer.domElement.addEventListener('pointerup',endPointer);
+renderer.domElement.addEventListener('pointercancel',endPointer);
+
+// Controls
+document.getElementById('addBtn').onclick=()=>createBlock();
+document.getElementById('rotateBtn').onclick=rotateSelected;
+document.getElementById('raiseBtn').onclick=()=>moveLevel(1);
+document.getElementById('lowerBtn').onclick=()=>moveLevel(-1);
+document.getElementById('removeBtn').onclick=removeSelected;
+document.getElementById('duplicateBtn').onclick=duplicateSelected;
+document.getElementById('resetBtn').onclick=()=>{
+  if(confirm('Удалить всю конструкцию и вернуть 30 брусков в запас?')) resetAll();
 };
 
-
-// =====================
-// ФИЗИКА
-// =====================
-
-const gravity = 0.7;
-const friction = 0.85;
-
-
-// =====================
-// ПЛАТФОРМЫ
-// =====================
-
-const platforms = [
-  {x: 0, y: 500, w: 700, h: 80},
-  {x: 300, y: 400, w: 180, h: 30},
-  {x: 600, y: 340, w: 180, h: 30},
-  {x: 900, y: 430, w: 220, h: 30},
-  {x: 1200, y: 350, w: 170, h: 30},
-  {x: 1500, y: 280, w: 200, h: 30},
-  {x: 1800, y: 420, w: 500, h: 80}
+let viewIndex=0;
+const views=[
+  {p:[13,12,15],t:[0,2,0]},
+  {p:[0,18,.01],t:[0,0,0]},
+  {p:[17,7,0],t:[0,2,0]},
+  {p:[10,9,10],t:[0,3,0]}
 ];
+document.getElementById('viewBtn').onclick=()=>{
+  viewIndex=(viewIndex+1)%views.length;
+  const v=views[viewIndex];
+  camera.position.set(...v.p);
+  controls.target.set(...v.t);
+  controls.update();
+};
 
-
-// =====================
-// УПРАВЛЕНИЕ
-// =====================
-
-let moveX = 0;
-
-const keys = {};
-
-window.addEventListener("keydown", e => {
-  keys[e.key.toLowerCase()] = true;
-
-  if (
-    e.key === "ArrowUp" ||
-    e.key === " " ||
-    e.key.toLowerCase() === "w"
-  ) {
-    jump();
-  }
+window.addEventListener('keydown',e=>{
+  if(e.key.toLowerCase()==='r') rotateSelected();
+  if(e.key==='Delete' || e.key==='Backspace') removeSelected();
+  if(e.key==='ArrowUp') moveLevel(1);
+  if(e.key==='ArrowDown') moveLevel(-1);
 });
 
-window.addEventListener("keyup", e => {
-  keys[e.key.toLowerCase()] = false;
+window.addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
 });
 
-
-// =====================
-// ПРЫЖОК
-// =====================
-
-function jump() {
-  if (player.onGround) {
-    player.vy = -player.jumpPower;
-    player.onGround = false;
-  }
+function animate(){
+  requestAnimationFrame(animate);
+  controls.update();
+  refreshSelectionBox();
+  renderer.render(scene,camera);
 }
-
-document.getElementById("jumpButton")
-  .addEventListener("pointerdown", jump);
-
-
-// =====================
-// ДЖОЙСТИК
-// =====================
-
-const joystick = document.getElementById("joystick");
-const stick = document.getElementById("stick");
-
-let joystickActive = false;
-
-joystick.addEventListener("pointerdown", e => {
-  joystickActive = true;
-  joystick.setPointerCapture(e.pointerId);
-  updateJoystick(e);
-});
-
-joystick.addEventListener("pointermove", e => {
-  if (joystickActive) {
-    updateJoystick(e);
-  }
-});
-
-joystick.addEventListener("pointerup", () => {
-  joystickActive = false;
-  moveX = 0;
-
-  stick.style.left = "35px";
-  stick.style.top = "35px";
-});
-
-
-function updateJoystick(e) {
-
-  const rect = joystick.getBoundingClientRect();
-
-  const centerX = rect.width / 2;
-  const centerY = rect.height / 2;
-
-  let x = e.clientX - rect.left - centerX;
-  let y = e.clientY - rect.top - centerY;
-
-  const maxDistance = 40;
-
-  const distance = Math.sqrt(x*x + y*y);
-
-  if (distance > maxDistance) {
-    x = x / distance * maxDistance;
-    y = y / distance * maxDistance;
-  }
-
-  stick.style.left = (centerX + x - 25) + "px";
-  stick.style.top = (centerY + y - 25) + "px";
-
-  moveX = x / maxDistance;
-}
-
-
-// =====================
-// КАМЕРА
-// =====================
-
-let cameraX = 0;
-
-
-// =====================
-// ОБНОВЛЕНИЕ
-// =====================
-
-function update() {
-
-  // клавиатура
-  let keyboardX = 0;
-
-  if (keys["a"] || keys["arrowleft"])
-    keyboardX = -1;
-
-  if (keys["d"] || keys["arrowright"])
-    keyboardX = 1;
-
-
-  let input = moveX;
-
-  if (keyboardX !== 0)
-    input = keyboardX;
-
-
-  player.vx += input * player.speed;
-
-  if (player.vx > player.maxSpeed)
-    player.vx = player.maxSpeed;
-
-  if (player.vx < -player.maxSpeed)
-    player.vx = -player.maxSpeed;
-
-
-  if (Math.abs(input) < 0.05)
-    player.vx *= friction;
-
-
-  player.vy += gravity;
-
-
-  player.x += player.vx;
-
-
-  // горизонтальные столкновения можно добавить позже
-
-
-  player.y += player.vy;
-
-  player.onGround = false;
-
-
-  for (const p of platforms) {
-
-    // падение сверху
-    if (
-      player.x + player.width > p.x &&
-      player.x < p.x + p.w &&
-      player.y + player.height > p.y &&
-      player.y + player.height - player.vy <= p.y &&
-      player.vy >= 0
-    ) {
-
-      player.y = p.y - player.height;
-      player.vy = 0;
-      player.onGround = true;
-
-    }
-
-  }
-
-
-  // падение вниз
-  if (player.y > canvas.height + 300) {
-
-    player.x = 80;
-    player.y = 100;
-
-    player.vx = 0;
-    player.vy = 0;
-
-  }
-
-
-  // камера следует за игроком
-  const targetCamera =
-    player.x - canvas.width * 0.4;
-
-  cameraX +=
-    (targetCamera - cameraX) * 0.08;
-
-  if (cameraX < 0)
-    cameraX = 0;
-
-}
-
-
-// =====================
-// ОТРИСОВКА
-// =====================
-
-function draw() {
-
-  ctx.clearRect(
-    0,
-    0,
-    canvas.width,
-    canvas.height
-  );
-
-
-  ctx.save();
-
-  ctx.translate(-cameraX, 0);
-
-
-  // платформы
-  ctx.fillStyle = "#3b8d3b";
-
-  for (const p of platforms) {
-
-    ctx.fillRect(
-      p.x,
-      p.y,
-      p.w,
-      p.h
-    );
-
-  }
-
-
-  // игрок
-  ctx.fillStyle = "#ff5c5c";
-
-  ctx.fillRect(
-    player.x,
-    player.y,
-    player.width,
-    player.height
-  );
-
-
-  // глаза
-  ctx.fillStyle = "white";
-
-  ctx.fillRect(
-    player.x + 25,
-    player.y + 10,
-    8,
-    8
-  );
-
-
-  ctx.restore();
-
-}
-
-
-// =====================
-// GAME LOOP
-// =====================
-
-function gameLoop() {
-
-  update();
-  draw();
-
-  requestAnimationFrame(gameLoop);
-
-}
-
-gameLoop();
-
+updateUI();
+animate();
 </script>
-
 </body>
 </html>
