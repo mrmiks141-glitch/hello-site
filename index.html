@@ -3,617 +3,907 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>3D-конструктор башен — 30 брусков</title>
+<title>3D-конструктор — 30 брусков</title>
 <style>
-  :root{
-    --bg:#eef0f2;
-    --panel:rgba(255,255,255,.92);
-    --border:#d8dce1;
-    --text:#17191c;
-    --muted:#72777f;
-    --accent:#17191c;
-  }
-  *{box-sizing:border-box}
-  html,body{
-    margin:0;width:100%;height:100%;overflow:hidden;
-    font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-    background:var(--bg);color:var(--text);
-    touch-action:none;
-  }
-  #app{position:relative;width:100%;height:100%}
-  #viewport{position:absolute;inset:0}
-  canvas{display:block;width:100%;height:100%}
+:root{--bg:#242526;--panel:#111;--border:#3a3a3a;--text:#eee;--muted:#8e8e8e}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:Arial,sans-serif;background:var(--bg);color:var(--text);touch-action:none}
+#app,#viewport{position:absolute;inset:0}
+canvas{display:block;width:100%;height:100%}
+.topbar{position:absolute;z-index:10;left:10px;right:10px;top:10px;display:flex;align-items:center;gap:7px;padding:9px 10px;border:1px solid var(--border);border-radius:15px;background:#111e}
+.brand{font-weight:800;font-size:16px;margin-right:auto;white-space:nowrap}
+.counter{padding:8px 10px;border:1px solid var(--border);border-radius:11px;white-space:nowrap;font-weight:700}
+button{border:1px solid var(--border);border-radius:11px;padding:9px 11px;background:#1b1b1d;color:#eee;font-weight:700;min-height:38px}
+button.primary{background:#22647c}
+button:disabled{opacity:.4}
+.panel{position:absolute;z-index:10;background:#111e;border:1px solid var(--border);border-radius:16px;padding:12px}
+#leftPanel{left:10px;bottom:10px;width:210px}
+#tools{right:10px;bottom:10px;width:238px}
+.title{font-weight:800;margin-bottom:8px}
+.small{font-size:12px;color:var(--muted);line-height:1.4}
+.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:8px}
+.span2{grid-column:span 2}
+.wide{grid-column:1/-1}
+.angleControls{display:grid;gap:7px;margin-top:8px}
+.angleRow{display:grid;grid-template-columns:18px 1fr 64px;align-items:center;gap:6px}
+.angleRow b{text-align:center;font-size:12px}
+.angleRow input[type="range"]{width:100%;margin:0;accent-color:#d5a15f}
+.angleRow input[type="number"]{width:64px;min-width:0;background:#1b1b1d;color:#eee;border:1px solid var(--border);border-radius:9px;padding:7px 5px;font-weight:700;font-size:11px}
+#info{margin-top:8px;padding:8px;border:1px solid var(--border);border-radius:10px;font-size:12px;line-height:1.4}
+#hint{position:absolute;z-index:9;top:74px;left:50%;transform:translateX(-50%);padding:8px 12px;border:1px solid var(--border);border-radius:999px;background:#111d;color:#bbb;font-size:12px;white-space:nowrap}
+#floor{position:absolute;z-index:9;right:12px;top:120px;padding:8px 12px;background:#111e;border:1px solid var(--border);border-radius:12px;font-weight:700}
+#status{position:absolute;z-index:50;left:50%;top:50%;transform:translate(-50%,-50%);padding:14px 18px;background:#111;border:1px solid var(--border);border-radius:12px;color:#ddd}
+#toast{position:absolute;z-index:50;left:50%;bottom:20px;transform:translateX(-50%);padding:9px 13px;border-radius:10px;background:#000;color:white;opacity:0;transition:.2s;pointer-events:none}
+#toast.show{opacity:1}
+.ui-hideable.ui-hidden{display:none !important}
+#showUiBtn{
+  display:none;position:absolute;z-index:100;right:10px;top:10px;
+  border:1px solid var(--border);border-radius:12px;padding:9px 12px;
+  background:#111e;color:#eee;font-weight:800
+}
+body.ui-hidden #showUiBtn{display:block}
+@media(orientation:landscape) and (max-height:520px){
+  #leftPanel{width:170px}
+  #tools{width:220px}
+  #hint{top:58px}
+  #floor{top:100px}
+}
+@media(max-width:700px){
+ .topbar{left:6px;right:6px;top:6px;padding:7px 8px;gap:5px}
+ .brand{font-size:14px}.counter{font-size:12px;padding:7px}
+ .topbar button{font-size:12px;padding:7px 9px;min-height:34px}
+ #hint{top:60px;max-width:93%;overflow:hidden;text-overflow:ellipsis}
+ #floor{top:110px;right:8px}
+ #leftPanel{left:6px;bottom:6px;width:148px;padding:9px}
+ #tools{right:6px;bottom:6px;width:188px;padding:9px}
+ .title{font-size:13px}.small{font-size:10px}
+ button{font-size:10px;padding:7px 5px;min-height:34px}
+ #info{font-size:10px;padding:6px}
+ .grid{gap:5px}
+}
 
+/* Compact landscape UI */
+@media (orientation:landscape) and (max-height:760px){
   .topbar{
-    position:absolute;left:12px;right:12px;top:12px;
-    z-index:10;display:flex;gap:8px;align-items:center;
-    padding:10px 12px;border:1px solid var(--border);
-    border-radius:16px;background:var(--panel);
-    backdrop-filter:blur(14px);box-shadow:0 10px 30px #00000012;
+    left:8px; right:8px; top:6px;
+    min-height:48px;
+    padding:6px 8px;
+    gap:5px;
+    border-radius:13px;
   }
-  .brand{font-weight:900;font-size:16px;margin-right:auto;white-space:nowrap}
+  .brand{
+    font-size:14px;
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
   .counter{
-    padding:8px 11px;border:1px solid var(--border);border-radius:11px;
-    background:white;font-size:13px;font-weight:800;white-space:nowrap
+    font-size:11px;
+    padding:6px 8px;
+    border-radius:9px;
   }
-
-  button{
-    border:0;border-radius:11px;padding:9px 12px;
-    background:var(--accent);color:#fff;font-weight:800;font-size:13px;
-    cursor:pointer;min-height:38px
-  }
-  button.secondary{
-    background:#fff;color:var(--text);border:1px solid var(--border)
-  }
-  button:active{transform:translateY(1px)}
-  button:disabled{opacity:.42;cursor:default}
-
-  .panel{
-    position:absolute;z-index:10;background:var(--panel);
-    border:1px solid var(--border);border-radius:16px;
-    backdrop-filter:blur(14px);box-shadow:0 10px 30px #00000012;
-  }
-
-  #leftPanel{
-    left:12px;bottom:12px;width:228px;padding:12px
-  }
-  .panelTitle{font-weight:900;font-size:14px;margin-bottom:9px}
-  .small{font-size:12px;line-height:1.35;color:var(--muted)}
-  .bigAdd{width:100%;margin-top:10px;font-size:14px}
-
-  #tools{
-    right:12px;bottom:12px;width:220px;padding:12px
-  }
-  .gridButtons{
-    display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px
-  }
-  .wide{grid-column:1/-1}
-  #selectedInfo{
-    margin-top:9px;padding:8px 10px;border:1px solid var(--border);
-    background:white;border-radius:10px;font-size:12px;line-height:1.4
+  .topbar button{
+    min-height:32px;
+    padding:6px 8px;
+    font-size:11px;
+    border-radius:9px;
+    white-space:nowrap;
   }
 
   #hint{
-    position:absolute;z-index:9;left:50%;top:86px;transform:translateX(-50%);
-    padding:8px 12px;border-radius:999px;background:#ffffffdd;
-    border:1px solid var(--border);font-size:12px;color:#444;
-    pointer-events:none;white-space:nowrap;box-shadow:0 6px 18px #00000010
+    top:58px;
+    left:50%;
+    max-width:46vw;
+    padding:5px 9px;
+    font-size:10px;
+    overflow:hidden;
+    text-overflow:ellipsis;
   }
 
-  #levelBadge{
-    position:absolute;z-index:9;right:14px;top:82px;
-    padding:8px 11px;border-radius:12px;background:#ffffffdd;
-    border:1px solid var(--border);font-size:12px;font-weight:800;
-    pointer-events:none
+  #floor{
+    top:58px;
+    right:8px;
+    padding:5px 8px;
+    font-size:10px;
+    border-radius:9px;
   }
 
-  #toast{
-    position:absolute;z-index:20;left:50%;bottom:24px;transform:translateX(-50%);
-    padding:10px 14px;border-radius:12px;background:#151515;color:white;
-    opacity:0;pointer-events:none;transition:opacity .18s;font-size:13px
+  #leftPanel{
+    left:8px;
+    bottom:8px;
+    width:190px;
+    padding:9px;
+    border-radius:13px;
   }
-  #toast.show{opacity:1}
+  #leftPanel .title{
+    margin-bottom:4px;
+    font-size:12px;
+  }
+  #leftPanel .small{
+    font-size:9px;
+    line-height:1.28;
+  }
+  #leftPanel button{
+    min-height:31px;
+    padding:6px 7px;
+    font-size:10px;
+    margin-top:6px !important;
+  }
 
-  @media(max-width:720px){
-    .topbar{left:7px;right:7px;top:7px;padding:7px;gap:5px;border-radius:13px}
-    .brand{font-size:14px}
-    .counter{padding:7px 8px;font-size:12px}
-    .topbar button{padding:7px 9px;font-size:12px;min-height:34px}
-    #hint{top:59px;max-width:94%;overflow:hidden;text-overflow:ellipsis}
-    #levelBadge{top:97px;right:8px}
-    #leftPanel{left:7px;bottom:7px;width:160px;padding:9px;border-radius:13px}
-    #tools{right:7px;bottom:7px;width:174px;padding:9px;border-radius:13px}
-    .panelTitle{font-size:13px;margin-bottom:6px}
-    .small{font-size:10px}
-    button{padding:8px 7px;font-size:11px;min-height:34px}
-    #selectedInfo{font-size:10px;padding:6px}
-    .gridButtons{gap:5px;margin-top:6px}
+  #tools{
+    top:58px;
+    bottom:8px;
+    right:8px;
+    width:310px;
+    max-height:none;
+    padding:9px;
+    border-radius:13px;
+    overflow-y:auto;
+    overflow-x:hidden;
+    scrollbar-width:thin;
   }
+  #tools .title{
+    margin-bottom:3px;
+    font-size:12px;
+  }
+  #tools .small{
+    font-size:9px;
+    line-height:1.25;
+  }
+  #tools .angleControls{
+    gap:4px;
+    margin-top:5px;
+  }
+  #tools .angleRow{
+    grid-template-columns:14px minmax(72px,1fr) 52px;
+    gap:4px;
+  }
+  #tools .angleRow b{
+    font-size:10px;
+  }
+  #tools .angleRow input[type="number"]{
+    width:52px;
+    height:29px;
+    padding:4px;
+    font-size:10px;
+    border-radius:8px;
+  }
+  #tools .grid{
+    gap:4px;
+    margin-top:5px;
+  }
+  #tools button{
+    min-height:30px;
+    padding:5px 5px;
+    font-size:10px;
+    border-radius:8px;
+  }
+  #info{
+    margin-top:5px;
+    padding:6px;
+    font-size:9px;
+    line-height:1.25;
+    border-radius:8px;
+  }
+
+  #showUiBtn{
+    top:7px;
+    right:7px;
+    min-height:32px;
+    padding:6px 9px;
+    font-size:11px;
+  }
+}
+
+/* Very short landscape screens */
+@media (orientation:landscape) and (max-height:520px){
+  .topbar{min-height:42px}
+  .brand{font-size:12px}
+  .counter{font-size:10px;padding:5px 6px}
+  .topbar button{font-size:10px;padding:5px 6px;min-height:29px}
+  #hint{display:none}
+  #floor{top:50px}
+  #tools{
+    top:50px;
+    width:286px;
+    padding:7px;
+  }
+  #leftPanel{
+    width:168px;
+    padding:7px;
+  }
+  #leftPanel .small{
+    max-height:32px;
+    overflow:hidden;
+  }
+  #tools .small{
+    display:none;
+  }
+  #tools .angleRow{
+    grid-template-columns:12px minmax(60px,1fr) 48px;
+  }
+  #tools .angleRow input[type="number"]{
+    width:48px;
+    height:27px;
+  }
+  #tools button{
+    min-height:27px;
+    padding:4px;
+  }
+  #info{
+    font-size:8px;
+  }
+}
+
 </style>
 </head>
 <body>
 <div id="app">
   <div id="viewport"></div>
 
-  <div class="topbar">
-    <div class="brand">3D-конструктор башен</div>
-    <div class="counter">На поле: <span id="usedCount">0</span>/30</div>
-    <button class="secondary" id="viewBtn">Вид</button>
+  <div class="topbar ui-hideable">
+    <div class="brand">3D-конструктор</div>
+    <div class="counter">На поле: <span id="used">0</span>/30</div>
+    <button id="landscapeBtn">↔ Гориз.</button>
+    <button id="hideUiBtn">Скрыть</button>
+    <button id="viewBtn">Вид</button>
     <button id="resetBtn">Сбросить</button>
   </div>
 
-  <div id="hint">Тяни брусок пальцем/мышью • пустое место — вращение камеры • колесо/щипок — масштаб</div>
-  <div id="levelBadge">Этаж: <span id="floorText">—</span></div>
+  <div id="hint" class="ui-hideable">Тяни брусок • пустое место — камера • X/Y/Z — любой угол</div>
+  <div id="floor" class="ui-hideable">Этаж: <span id="floorText">—</span></div>
+  <div id="status">Загрузка 3D…</div>
 
-  <div class="panel" id="leftPanel">
-    <div class="panelTitle">Брусочки</div>
-    <div class="small">
-      Каждый брусок имеет размер 3×1×1. Все позиции привязываются к сетке.
-    </div>
-    <button class="bigAdd" id="addBtn">+ Добавить брусок</button>
-    <div class="small" style="margin-top:8px">
-      Осталось: <b id="remainingCount">30</b>
-    </div>
+  <div class="panel ui-hideable" id="leftPanel">
+    <div class="title">Брусочки</div>
+    <div class="small">Размер 3×1×0,5. Можно ставить плашмя, на бок и вертикально.</div>
+    <button id="addBtn" class="primary" style="width:100%;margin-top:9px">+ Добавить брусок</button>
+    <button id="downloadModelBtn" style="width:100%;margin-top:6px">⬇ Скачать .GLB</button>
+    <div class="small" style="margin-top:8px">Осталось: <b id="remaining">30</b></div>
   </div>
 
-  <div class="panel" id="tools">
-    <div class="panelTitle">Выбранный брусок</div>
-    <div class="small">Нажми на брусок, чтобы выбрать его.</div>
-    <div class="gridButtons">
-      <button class="secondary" id="rotateBtn">↻ 90°</button>
-      <button class="secondary" id="raiseBtn">↑ Этаж</button>
-      <button class="secondary" id="lowerBtn">↓ Этаж</button>
-      <button class="secondary" id="duplicateBtn">Копия</button>
-      <button class="wide" id="removeBtn">Вернуть в запас</button>
+  <div class="panel ui-hideable" id="tools">
+    <div class="title">Выбранный брусок</div>
+    <div class="small">Любой угол по X, Y и Z. Можно ввести точное число градусов.</div>
+    <div class="angleControls">
+      <div class="angleRow"><b>X</b><input id="rotXRange" type="range" min="-180" max="180" step="1" value="0"><input id="rotXNum" type="number" step="0.1" value="0"></div>
+      <div class="angleRow"><b>Y</b><input id="rotYRange" type="range" min="-180" max="180" step="1" value="0"><input id="rotYNum" type="number" step="0.1" value="0"></div>
+      <div class="angleRow"><b>Z</b><input id="rotZRange" type="range" min="-180" max="180" step="1" value="0"><input id="rotZNum" type="number" step="0.1" value="0"></div>
     </div>
-    <div id="selectedInfo">Ничего не выбрано</div>
+    <div class="grid">
+      <button id="upBtn">↑</button>
+      <button id="downBtn">↓</button>
+      <button id="copyBtn">Копия</button>
+      <button id="lockBtn" class="wide">🔒 Закрепить</button>
+      <button id="resetRotBtn" class="wide">Сброс вращ.</button>
+      <button id="removeBtn" class="wide">В запас</button>
+    </div>
+    <div id="info">Ничего не выбрано</div>
   </div>
 
   <div id="toast"></div>
+  <button id="showUiBtn">Показать UI</button>
 </div>
 
-<script type="module">
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
-import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/controls/OrbitControls.js';
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
 
-const TOTAL = 30;
-const BLOCK_L = 3;
-const BLOCK_W = 1;
-const BLOCK_H = 1;
-const GRID_SIZE = 18;
-const SNAP = 1;
-
-const viewport = document.getElementById('viewport');
-const usedCount = document.getElementById('usedCount');
-const remainingCount = document.getElementById('remainingCount');
-const floorText = document.getElementById('floorText');
-const selectedInfo = document.getElementById('selectedInfo');
-
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xeff1f3);
-
-const camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.1, 200);
-camera.position.set(13, 12, 15);
-
-const renderer = new THREE.WebGLRenderer({antialias:true});
-renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-renderer.setSize(innerWidth,innerHeight);
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-viewport.appendChild(renderer.domElement);
-
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.dampingFactor = .08;
-controls.target.set(0,2,0);
-controls.minDistance = 5;
-controls.maxDistance = 38;
-controls.maxPolarAngle = Math.PI * .48;
-controls.enablePan = true;
-
-scene.add(new THREE.HemisphereLight(0xffffff,0xb2bac4,2.2));
-
-const sun = new THREE.DirectionalLight(0xffffff,2.4);
-sun.position.set(8,16,10);
-sun.castShadow = true;
-sun.shadow.mapSize.set(2048,2048);
-sun.shadow.camera.left = -20;
-sun.shadow.camera.right = 20;
-sun.shadow.camera.top = 20;
-sun.shadow.camera.bottom = -20;
-scene.add(sun);
-
-// Ground
-const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(GRID_SIZE,GRID_SIZE),
-  new THREE.MeshStandardMaterial({color:0xf8f8f6,roughness:.92,metalness:0})
-);
-ground.rotation.x = -Math.PI/2;
-ground.receiveShadow = true;
-scene.add(ground);
-
-// Grid
-const grid = new THREE.GridHelper(GRID_SIZE, GRID_SIZE, 0x858b92, 0xcfd3d7);
-grid.position.y = 0.003;
-scene.add(grid);
-
-// subtle platform
-const platform = new THREE.Mesh(
-  new THREE.BoxGeometry(GRID_SIZE+.4,.3,GRID_SIZE+.4),
-  new THREE.MeshStandardMaterial({color:0xd8d9d5,roughness:.85})
-);
-platform.position.y = -.16;
-platform.receiveShadow = true;
-scene.add(platform);
-
-// Wood textures procedurally via canvas
-function makeWoodTexture(){
-  const c = document.createElement('canvas');
-  c.width = 512; c.height = 128;
-  const ctx = c.getContext('2d');
-  const g = ctx.createLinearGradient(0,0,0,c.height);
-  g.addColorStop(0,'#e5bd82');
-  g.addColorStop(.45,'#cf9656');
-  g.addColorStop(1,'#b97739');
-  ctx.fillStyle = g;
-  ctx.fillRect(0,0,c.width,c.height);
-
-  ctx.globalAlpha=.2;
-  ctx.strokeStyle='#75451f';
-  for(let i=0;i<28;i++){
-    ctx.beginPath();
-    let y = Math.random()*c.height;
-    ctx.moveTo(0,y);
-    for(let x=0;x<=c.width;x+=20){
-      ctx.lineTo(x,y+Math.sin(x*.035+i)*2.5+Math.random()*1.5);
-    }
-    ctx.stroke();
+<script>
+(function(){
+  const status=document.getElementById('status');
+  if(typeof THREE==='undefined'){
+    status.textContent='Не удалось загрузить Three.js. Проверь интернет и обнови страницу.';
+    return;
   }
-  ctx.globalAlpha=1;
+  status.style.display='none';
 
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(1.4,1);
-  return tex;
-}
-const woodTexture = makeWoodTexture();
+  const TOTAL=30, L=3, W=1, H=0.5, GRID=18, STEP_Y=0.5;
+  const viewport=document.getElementById('viewport');
 
-const baseMaterial = new THREE.MeshStandardMaterial({
-  map:woodTexture,
-  color:0xffffff,
-  roughness:.72,
-  metalness:0
-});
-const selectedMaterial = new THREE.MeshStandardMaterial({
-  map:woodTexture,
-  color:0xffe8a8,
-  emissive:0x382600,
-  emissiveIntensity:.25,
-  roughness:.68
-});
+  const scene=new THREE.Scene();
+  scene.background=new THREE.Color(0x242526);
 
-const edgeMaterial = new THREE.LineBasicMaterial({color:0x4e2e16});
-const blockGeometry = new THREE.BoxGeometry(BLOCK_L,BLOCK_H,BLOCK_W);
-blockGeometry.translate(0,BLOCK_H/2,0);
+  const camera=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,.1,200);
+  camera.position.set(13,12,15);
 
-let blocks = [];
-let selected = null;
-let nextId = 1;
-
-// Selection outline box
-const selectionBox = new THREE.BoxHelper(undefined,0x111111);
-selectionBox.visible=false;
-scene.add(selectionBox);
-
-function updateUI(){
-  usedCount.textContent = blocks.length;
-  remainingCount.textContent = TOTAL - blocks.length;
-
-  const has = !!selected;
-  for(const id of ['rotateBtn','raiseBtn','lowerBtn','removeBtn','duplicateBtn']){
-    document.getElementById(id).disabled = !has || (id==='duplicateBtn' && blocks.length>=TOTAL);
-  }
-  document.getElementById('addBtn').disabled = blocks.length>=TOTAL;
-
-  if(selected){
-    floorText.textContent = Math.round(selected.position.y);
-    selectedInfo.innerHTML =
-      `<b>#${selected.userData.id}</b><br>`+
-      `X: ${selected.position.x.toFixed(0)} &nbsp; `+
-      `Z: ${selected.position.z.toFixed(0)}<br>`+
-      `Этаж: ${selected.position.y.toFixed(0)} &nbsp; `+
-      `Поворот: ${selected.userData.rot===0?'0°':'90°'}`;
-  }else{
-    floorText.textContent='—';
-    selectedInfo.textContent='Ничего не выбрано';
-  }
-}
-
-function toast(text){
-  const el=document.getElementById('toast');
-  el.textContent=text;el.classList.add('show');
-  clearTimeout(el._t);
-  el._t=setTimeout(()=>el.classList.remove('show'),1200);
-}
-
-function snap(v){ return Math.round(v/SNAP)*SNAP; }
-
-function blockFootprint(mesh, pos=mesh.position, rot=mesh.userData.rot){
-  const halfX = (rot===0 ? BLOCK_L : BLOCK_W)/2;
-  const halfZ = (rot===0 ? BLOCK_W : BLOCK_L)/2;
-  return {
-    minX:pos.x-halfX, maxX:pos.x+halfX,
-    minZ:pos.z-halfZ, maxZ:pos.z+halfZ,
-    minY:pos.y, maxY:pos.y+BLOCK_H
-  };
-}
-
-function overlaps(a,b,eps=.02){
-  return a.minX < b.maxX-eps && a.maxX > b.minX+eps &&
-         a.minZ < b.maxZ-eps && a.maxZ > b.minZ+eps &&
-         a.minY < b.maxY-eps && a.maxY > b.minY+eps;
-}
-
-function validPosition(mesh,pos=mesh.position,rot=mesh.userData.rot){
-  const f=blockFootprint(mesh,pos,rot);
-  const lim=GRID_SIZE/2;
-  if(f.minX < -lim || f.maxX > lim || f.minZ < -lim || f.maxZ > lim || pos.y<0) return false;
-
-  for(const other of blocks){
-    if(other===mesh) continue;
-    if(overlaps(f,blockFootprint(other))) return false;
-  }
-  return true;
-}
-
-function nearestFreePosition(startY=0){
-  // Try a compact spiral on each level.
-  for(let y=startY;y<=10;y++){
-    for(let r=0;r<=7;r++){
-      for(let x=-r;x<=r;x++){
-        for(const z of [-r,r]){
-          const p=new THREE.Vector3(x,y,z);
-          const dummy={position:p,userData:{rot:0}};
-          let f={
-            minX:p.x-BLOCK_L/2,maxX:p.x+BLOCK_L/2,
-            minZ:p.z-BLOCK_W/2,maxZ:p.z+BLOCK_W/2,
-            minY:p.y,maxY:p.y+BLOCK_H
-          };
-          const lim=GRID_SIZE/2;
-          if(f.minX < -lim || f.maxX > lim || f.minZ < -lim || f.maxZ > lim) continue;
-          if(!blocks.some(o=>overlaps(f,blockFootprint(o)))) return p;
-        }
-      }
-      for(let z=-r+1;z<=r-1;z++){
-        for(const x of [-r,r]){
-          const p=new THREE.Vector3(x,y,z);
-          const f={
-            minX:p.x-BLOCK_L/2,maxX:p.x+BLOCK_L/2,
-            minZ:p.z-BLOCK_W/2,maxZ:p.z+BLOCK_W/2,
-            minY:p.y,maxY:p.y+BLOCK_H
-          };
-          if(!blocks.some(o=>overlaps(f,blockFootprint(o)))) return p;
-        }
-      }
-    }
-  }
-  return new THREE.Vector3(0,0,0);
-}
-
-function createBlock(position=null,rot=0){
-  if(blocks.length>=TOTAL){ toast('Все 30 брусков уже использованы'); return null; }
-
-  const group = new THREE.Group();
-  group.userData.isBlock=true;
-  group.userData.id=nextId++;
-  group.userData.rot=rot;
-
-  const mesh = new THREE.Mesh(blockGeometry,baseMaterial.clone());
-  mesh.castShadow=true;
-  mesh.receiveShadow=true;
-  mesh.userData.parentBlock=group;
-  group.add(mesh);
-
-  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(blockGeometry),edgeMaterial);
-  edges.userData.parentBlock=group;
-  group.add(edges);
-
-  scene.add(group);
-  blocks.push(group);
-
-  if(position) group.position.copy(position);
-  else group.position.copy(nearestFreePosition(0));
-
-  group.rotation.y = rot===0 ? 0 : Math.PI/2;
-  selectBlock(group);
-  updateUI();
-  return group;
-}
-
-function selectBlock(b){
-  if(selected){
-    selected.children[0].material.color.set(0xffffff);
-    selected.children[0].material.emissive.set(0x000000);
-    selected.children[0].material.emissiveIntensity=0;
-  }
-  selected=b;
-  if(selected){
-    selected.children[0].material.color.set(0xffe8a8);
-    selected.children[0].material.emissive.set(0x382600);
-    selected.children[0].material.emissiveIntensity=.25;
-    selectionBox.setFromObject(selected);
-    selectionBox.visible=true;
-  }else{
-    selectionBox.visible=false;
-  }
-  updateUI();
-}
-
-function refreshSelectionBox(){
-  if(selected && selectionBox.visible) selectionBox.setFromObject(selected);
-}
-
-function rotateSelected(){
-  if(!selected) return;
-  const oldRot=selected.userData.rot;
-  const newRot=oldRot===0?1:0;
-  if(validPosition(selected,selected.position,newRot)){
-    selected.userData.rot=newRot;
-    selected.rotation.y=newRot===0?0:Math.PI/2;
-    refreshSelectionBox();
-    updateUI();
-  } else toast('Здесь не хватает места для поворота');
-}
-
-function moveLevel(delta){
-  if(!selected) return;
-  const old=selected.position.clone();
-  const np=old.clone(); np.y=Math.max(0,snap(np.y+delta));
-  if(validPosition(selected,np,selected.userData.rot)){
-    selected.position.copy(np);
-    refreshSelectionBox();updateUI();
-  }else toast('На этом этаже место занято');
-}
-
-function removeSelected(){
-  if(!selected)return;
-  const victim=selected;
-  selectBlock(null);
-  blocks=blocks.filter(b=>b!==victim);
-  scene.remove(victim);
-  updateUI();
-}
-
-function duplicateSelected(){
-  if(!selected || blocks.length>=TOTAL)return;
-  const pos=selected.position.clone();
-  pos.x+=1;
-  const clone=createBlock(nearestFreePosition(Math.round(selected.position.y)),selected.userData.rot);
-  if(clone) updateUI();
-}
-
-function resetAll(){
-  for(const b of blocks) scene.remove(b);
-  blocks=[];
-  nextId=1;
-  selectBlock(null);
-  updateUI();
-}
-
-// Raycast & dragging
-const raycaster=new THREE.Raycaster();
-const pointer=new THREE.Vector2();
-const dragPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
-const hitPoint=new THREE.Vector3();
-let dragging=false;
-let dragBlock=null;
-let dragOffset=new THREE.Vector3();
-let lastGood=new THREE.Vector3();
-let pointerDownPos={x:0,y:0};
-let downHitBlock=null;
-
-function pointerToRay(e){
-  const r=renderer.domElement.getBoundingClientRect();
-  pointer.x=((e.clientX-r.left)/r.width)*2-1;
-  pointer.y=-((e.clientY-r.top)/r.height)*2+1;
-  raycaster.setFromCamera(pointer,camera);
-}
-
-function blockFromObject(obj){
-  let o=obj;
-  while(o){
-    if(o.userData?.isBlock) return o;
-    if(o.userData?.parentBlock) return o.userData.parentBlock;
-    o=o.parent;
-  }
-  return null;
-}
-
-renderer.domElement.addEventListener('pointerdown',e=>{
-  pointerDownPos={x:e.clientX,y:e.clientY};
-  pointerToRay(e);
-  const hits=raycaster.intersectObjects(blocks,true);
-  downHitBlock = hits.length ? blockFromObject(hits[0].object) : null;
-
-  if(downHitBlock){
-    selectBlock(downHitBlock);
-    dragBlock=downHitBlock;
-    lastGood.copy(dragBlock.position);
-    dragPlane.set(new THREE.Vector3(0,1,0),-dragBlock.position.y);
-    if(raycaster.ray.intersectPlane(dragPlane,hitPoint)){
-      dragOffset.copy(dragBlock.position).sub(hitPoint);
-    }else dragOffset.set(0,0,0);
-    dragging=true;
-    controls.enabled=false;
-    renderer.domElement.setPointerCapture?.(e.pointerId);
-  }
-});
-
-renderer.domElement.addEventListener('pointermove',e=>{
-  if(!dragging || !dragBlock)return;
-  pointerToRay(e);
-  dragPlane.set(new THREE.Vector3(0,1,0),-dragBlock.position.y);
-  if(raycaster.ray.intersectPlane(dragPlane,hitPoint)){
-    const candidate=hitPoint.clone().add(dragOffset);
-    candidate.x=snap(candidate.x);
-    candidate.z=snap(candidate.z);
-    candidate.y=dragBlock.position.y;
-
-    if(validPosition(dragBlock,candidate,dragBlock.userData.rot)){
-      dragBlock.position.copy(candidate);
-      lastGood.copy(candidate);
-    }else{
-      dragBlock.position.copy(lastGood);
-    }
-    refreshSelectionBox();
-    updateUI();
-  }
-});
-
-function endPointer(e){
-  if(dragging){
-    dragging=false;
-    controls.enabled=true;
-    dragBlock=null;
-  }else{
-    const dist=Math.hypot(e.clientX-pointerDownPos.x,e.clientY-pointerDownPos.y);
-    if(dist<6 && !downHitBlock) selectBlock(null);
-  }
-  downHitBlock=null;
-}
-renderer.domElement.addEventListener('pointerup',endPointer);
-renderer.domElement.addEventListener('pointercancel',endPointer);
-
-// Controls
-document.getElementById('addBtn').onclick=()=>createBlock();
-document.getElementById('rotateBtn').onclick=rotateSelected;
-document.getElementById('raiseBtn').onclick=()=>moveLevel(1);
-document.getElementById('lowerBtn').onclick=()=>moveLevel(-1);
-document.getElementById('removeBtn').onclick=removeSelected;
-document.getElementById('duplicateBtn').onclick=duplicateSelected;
-document.getElementById('resetBtn').onclick=()=>{
-  if(confirm('Удалить всю конструкцию и вернуть 30 брусков в запас?')) resetAll();
-};
-
-let viewIndex=0;
-const views=[
-  {p:[13,12,15],t:[0,2,0]},
-  {p:[0,18,.01],t:[0,0,0]},
-  {p:[17,7,0],t:[0,2,0]},
-  {p:[10,9,10],t:[0,3,0]}
-];
-document.getElementById('viewBtn').onclick=()=>{
-  viewIndex=(viewIndex+1)%views.length;
-  const v=views[viewIndex];
-  camera.position.set(...v.p);
-  controls.target.set(...v.t);
-  controls.update();
-};
-
-window.addEventListener('keydown',e=>{
-  if(e.key.toLowerCase()==='r') rotateSelected();
-  if(e.key==='Delete' || e.key==='Backspace') removeSelected();
-  if(e.key==='ArrowUp') moveLevel(1);
-  if(e.key==='ArrowDown') moveLevel(-1);
-});
-
-window.addEventListener('resize',()=>{
-  camera.aspect=innerWidth/innerHeight;
-  camera.updateProjectionMatrix();
+  const renderer=new THREE.WebGLRenderer({antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
   renderer.setSize(innerWidth,innerHeight);
-});
+  renderer.shadowMap.enabled=true;
+  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  viewport.appendChild(renderer.domElement);
 
-function animate(){
-  requestAnimationFrame(animate);
-  controls.update();
-  refreshSelectionBox();
-  renderer.render(scene,camera);
-}
-updateUI();
-animate();
+  const controls=new THREE.OrbitControls(camera,renderer.domElement);
+  controls.enableDamping=true;
+  controls.dampingFactor=.08;
+  controls.target.set(0,2,0);
+  controls.minDistance=5;
+  controls.maxDistance=40;
+  controls.maxPolarAngle=Math.PI*.49;
+  controls.enablePan=true;
+
+  scene.add(new THREE.HemisphereLight(0xffffff,0x54585d,1.6));
+  const sun=new THREE.DirectionalLight(0xffffff,1.4);
+  sun.position.set(8,16,10);
+  sun.castShadow=true;
+  sun.shadow.mapSize.width=1024;
+  sun.shadow.mapSize.height=1024;
+  scene.add(sun);
+
+  const platform=new THREE.Mesh(
+    new THREE.BoxGeometry(GRID+.4,.3,GRID+.4),
+    new THREE.MeshStandardMaterial({color:0x37393b,roughness:.9})
+  );
+  platform.position.y=-.16;
+  platform.receiveShadow=true;
+  scene.add(platform);
+
+  const ground=new THREE.Mesh(
+    new THREE.PlaneGeometry(GRID,GRID),
+    new THREE.MeshStandardMaterial({color:0x2f3032,roughness:.95})
+  );
+  ground.rotation.x=-Math.PI/2;
+  ground.position.y=.002;
+  ground.receiveShadow=true;
+  scene.add(ground);
+
+  const grid=new THREE.GridHelper(GRID,GRID,0x777777,0x454545);
+  grid.position.y=.005;
+  scene.add(grid);
+
+  function makeWoodTexture(){
+    const c=document.createElement('canvas');
+    c.width=512;c.height=128;
+    const ctx=c.getContext('2d');
+    const g=ctx.createLinearGradient(0,0,0,128);
+    g.addColorStop(0,'#e6bd82');g.addColorStop(.45,'#cf9656');g.addColorStop(1,'#a96530');
+    ctx.fillStyle=g;ctx.fillRect(0,0,512,128);
+    ctx.globalAlpha=.22;ctx.strokeStyle='#6e421f';
+    for(let i=0;i<25;i++){
+      ctx.beginPath();let base=Math.random()*128;ctx.moveTo(0,base);
+      for(let x=0;x<=512;x+=18)ctx.lineTo(x,base+Math.sin(x*.035+i)*2.3);
+      ctx.stroke();
+    }
+    ctx.globalAlpha=1;
+    const t=new THREE.CanvasTexture(c);
+    t.wrapS=THREE.RepeatWrapping;t.wrapT=THREE.RepeatWrapping;t.repeat.set(1.6,1);
+    return t;
+  }
+
+  const wood=makeWoodTexture();
+  // Geometry is centered so rotations around X/Y/Z are natural.
+  const geom=new THREE.BoxGeometry(L,H,W);
+  const edgeGeom=new THREE.EdgesGeometry(geom);
+
+  let blocks=[],selected=null,nextId=1;
+  const selection=new THREE.BoxHelper(new THREE.Object3D(),0xffffff);
+  selection.visible=false;
+  scene.add(selection);
+
+  const used=document.getElementById('used');
+  const remaining=document.getElementById('remaining');
+  const floorText=document.getElementById('floorText');
+  const info=document.getElementById('info');
+
+  function toast(s){
+    const t=document.getElementById('toast');
+    t.textContent=s;t.classList.add('show');
+    clearTimeout(t._timer);t._timer=setTimeout(()=>t.classList.remove('show'),1000);
+  }
+
+  function anglesFor(obj,override){
+    const r=override||obj.userData.rot;
+    return {x:Number(r.x)||0,y:Number(r.y)||0,z:Number(r.z)||0};
+  }
+
+  function deg(v){ return THREE.MathUtils.degToRad(v); }
+  function normDeg(v){
+    v=Number(v)||0;
+    v=((v+180)%360+360)%360-180;
+    return Math.abs(v)<0.0001 ? 0 : v;
+  }
+
+  function eulerFromRot(r){
+    return new THREE.Euler(deg(r.x),deg(r.y),deg(r.z),'XYZ');
+  }
+
+  function rotationMatrix(rot){
+    return new THREE.Matrix4().makeRotationFromEuler(eulerFromRot(rot));
+  }
+
+  function halfExtents(rot){
+    const m=rotationMatrix(rot).elements;
+    const hx=Math.abs(m[0])*L/2+Math.abs(m[4])*H/2+Math.abs(m[8])*W/2;
+    const hy=Math.abs(m[1])*L/2+Math.abs(m[5])*H/2+Math.abs(m[9])*W/2;
+    const hz=Math.abs(m[2])*L/2+Math.abs(m[6])*H/2+Math.abs(m[10])*W/2;
+    return {x:hx,y:hy,z:hz};
+  }
+
+  function aabb(obj,pos,rot){
+    pos=pos||obj.position;rot=rot||anglesFor(obj);
+    const h=halfExtents(rot);
+    return {minX:pos.x-h.x,maxX:pos.x+h.x,minY:pos.y-h.y,maxY:pos.y+h.y,minZ:pos.z-h.z,maxZ:pos.z+h.z};
+  }
+
+  function obb(pos,rot){
+    const m=rotationMatrix(rot);
+    const ex=new THREE.Vector3(1,0,0).applyMatrix4(m).normalize();
+    const ey=new THREE.Vector3(0,1,0).applyMatrix4(m).normalize();
+    const ez=new THREE.Vector3(0,0,1).applyMatrix4(m).normalize();
+    return {
+      center:pos.clone(),
+      axes:[ex,ey,ez],
+      half:[L/2,H/2,W/2]
+    };
+  }
+
+  // Exact oriented-box collision using the separating-axis theorem.
+  function obbOverlap(a,b){
+    const axes=[a.axes[0],a.axes[1],a.axes[2],b.axes[0],b.axes[1],b.axes[2]];
+    for(let i=0;i<3;i++){
+      for(let j=0;j<3;j++){
+        const c=new THREE.Vector3().crossVectors(a.axes[i],b.axes[j]);
+        if(c.lengthSq()>1e-8) axes.push(c.normalize());
+      }
+    }
+
+    const delta=new THREE.Vector3().subVectors(b.center,a.center);
+    const touchTolerance=.015;
+
+    for(const axisRaw of axes){
+      const axis=axisRaw.clone().normalize();
+      const dist=Math.abs(delta.dot(axis));
+      let ra=0,rb=0;
+      for(let i=0;i<3;i++){
+        ra+=a.half[i]*Math.abs(a.axes[i].dot(axis));
+        rb+=b.half[i]*Math.abs(b.axes[i].dot(axis));
+      }
+      if(dist>=ra+rb-touchTolerance) return false;
+    }
+    return true;
+  }
+
+  function valid(obj,pos,rot){
+    const f=aabb(obj,pos,rot),lim=GRID/2;
+    if(f.minX<-lim||f.maxX>lim||f.minZ<-lim||f.maxZ>lim||f.minY<-.001)return false;
+
+    const candidate=obb(pos,rot);
+    for(const other of blocks){
+      if(other===obj)continue;
+      if(obbOverlap(candidate,obb(other.position,anglesFor(other))))return false;
+    }
+    return true;
+  }
+
+  function applyRotation(obj){
+    const r=obj.userData.rot;
+    obj.rotation.set(deg(r.x),deg(r.y),deg(r.z),'XYZ');
+  }
+
+  function bottomOf(obj,rot){
+    const h=halfExtents(rot||anglesFor(obj));
+    return obj.position.y-h.y;
+  }
+
+  function floorNumber(obj){
+    return Math.round(bottomOf(obj)/STEP_Y);
+  }
+
+  function syncRotationControls(){
+    const disabled=!selected || (selected && selected.userData.locked===true);
+    ['x','y','z'].forEach(axis=>{
+      const value=selected ? normDeg(selected.userData.rot[axis]) : 0;
+      const range=document.getElementById('rot'+axis.toUpperCase()+'Range');
+      const num=document.getElementById('rot'+axis.toUpperCase()+'Num');
+      range.disabled=disabled; num.disabled=disabled;
+      range.value=Math.max(-180,Math.min(180,value));
+      num.value=Math.round(value*10)/10;
+    });
+  }
+
+  function updateUI(){
+    used.textContent=blocks.length;
+    remaining.textContent=TOTAL-blocks.length;
+    document.getElementById('addBtn').disabled=blocks.length>=TOTAL;
+    ['upBtn','downBtn','copyBtn','removeBtn','resetRotBtn','lockBtn'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(!el)return;
+      if(id==='copyBtn') el.disabled=!selected||blocks.length>=TOTAL;
+      else if(id==='lockBtn') el.disabled=!selected;
+      else el.disabled=!selected||(selected&&selected.userData.locked);
+    });
+
+    if(selected){
+      const locked=selected.userData.locked===true;
+      document.getElementById('lockBtn').textContent=locked?'🔓 Разблокировать':'🔒 Закрепить';
+
+      ['x','y','z'].forEach(axis=>{
+        document.getElementById('rot'+axis.toUpperCase()+'Range').disabled=locked;
+        document.getElementById('rot'+axis.toUpperCase()+'Num').disabled=locked;
+      });
+
+      const r=selected.userData.rot;
+      floorText.textContent=floorNumber(selected);
+      info.innerHTML='<b>#'+selected.userData.id+'</b><br>'+
+        'Статус: '+(locked?'🔒 Закреплён':'🔓 Свободен')+'<br>'+
+        'X: '+selected.position.x.toFixed(1)+' &nbsp; Z: '+selected.position.z.toFixed(1)+'<br>'+
+        'Этаж: '+floorNumber(selected)+'<br>'+
+        'Поворот: X '+normDeg(r.x).toFixed(1)+'° · Y '+normDeg(r.y).toFixed(1)+'° · Z '+normDeg(r.z).toFixed(1)+'°';
+    }else{
+      const lockBtn=document.getElementById('lockBtn');
+      if(lockBtn) lockBtn.textContent='🔒 Закрепить';
+      floorText.textContent='—';
+      info.textContent='Ничего не выбрано';
+    }
+  }
+
+  function freeSpot(rot,startBottom){
+    rot=rot||{x:0,y:0,z:0};
+    startBottom=Math.max(0,startBottom||0);
+    const h=halfExtents(rot);
+    for(let bottom=startBottom;bottom<8;bottom+=STEP_Y){
+      const y=bottom+h.y;
+      for(let radius=0;radius<8;radius++){
+        for(let x=-radius;x<=radius;x++){
+          for(let z=-radius;z<=radius;z++){
+            if(Math.abs(x)!==radius&&Math.abs(z)!==radius)continue;
+            const p=new THREE.Vector3(x,y,z);
+            const f=aabb({position:p,userData:{rot:rot}},p,rot),lim=GRID/2;
+            if(f.minX<-lim||f.maxX>lim||f.minZ<-lim||f.maxZ>lim)continue;
+
+            const candidate=obb(p,rot);
+            let ok=true;
+            for(const b of blocks){
+              if(obbOverlap(candidate,obb(b.position,anglesFor(b)))){ok=false;break;}
+            }
+            if(ok)return p;
+          }
+        }
+      }
+    }
+    return new THREE.Vector3(0,h.y,0);
+  }
+
+  function select(b){
+    if(selected){
+      selected.children[0].material.emissive.setHex(0x000000);
+      selected.children[0].material.color.setHex(0xffffff);
+    }
+    selected=b;
+    if(b){
+      b.children[0].material.color.setHex(0x6fc9ff);
+      b.children[0].material.emissive.setHex(0x0b3550);
+      selection.setFromObject(b);selection.visible=true;
+    }else selection.visible=false;
+    updateUI();
+  }
+
+  function addBlock(pos,rot){
+    if(blocks.length>=TOTAL)return;
+    rot=rot?{x:Number(rot.x)||0,y:Number(rot.y)||0,z:Number(rot.z)||0}:{x:0,y:0,z:0};
+
+    const group=new THREE.Group();
+    group.userData.isBlock=true;
+    group.userData.id=nextId++;
+    group.userData.rot=rot;
+    group.userData.locked=false;
+
+    const mat=new THREE.MeshStandardMaterial({map:wood,color:0xffffff,roughness:.72});
+    const mesh=new THREE.Mesh(geom,mat);
+    mesh.castShadow=true;mesh.receiveShadow=true;mesh.userData.block=group;group.add(mesh);
+
+    const edges=new THREE.LineSegments(edgeGeom,new THREE.LineBasicMaterial({color:0x5b3418}));
+    edges.userData.block=group;group.add(edges);
+
+    applyRotation(group);
+    group.position.copy(pos||freeSpot(rot,0));
+    scene.add(group);blocks.push(group);select(group);updateUI();
+  }
+
+  function setRotationAxis(axis,value){
+    if(!selected||selected.userData.locked)return;
+    value=Number(value);
+    if(!Number.isFinite(value))return;
+
+    const old={x:selected.userData.rot.x,y:selected.userData.rot.y,z:selected.userData.rot.z};
+    const nr={x:old.x,y:old.y,z:old.z};
+    nr[axis]=value;
+
+    const oldHalf=halfExtents(old);
+    const newHalf=halfExtents(nr);
+    const oldBottom=selected.position.y-oldHalf.y;
+    const candidate=selected.position.clone();
+    candidate.y=oldBottom+newHalf.y;
+
+    if(valid(selected,candidate,nr)){
+      selected.userData.rot=nr;
+      selected.position.copy(candidate);
+      applyRotation(selected);
+      selection.setFromObject(selected);
+      updateUI();
+    }else{
+      toast('Этот угол пересекает другой брусок или выходит за поле');
+      syncRotationControls();
+    }
+  }
+
+  function resetRotation(){
+    if(!selected||selected.userData.locked)return;
+    const old={x:selected.userData.rot.x,y:selected.userData.rot.y,z:selected.userData.rot.z};
+    const nr={x:0,y:0,z:0};
+    const oldBottom=selected.position.y-halfExtents(old).y;
+    const candidate=selected.position.clone();
+    candidate.y=oldBottom+halfExtents(nr).y;
+
+    if(valid(selected,candidate,nr)){
+      selected.userData.rot=nr;
+      selected.position.copy(candidate);
+      applyRotation(selected);
+      selection.setFromObject(selected);
+      updateUI();
+    }else toast('Здесь нельзя сбросить вращение');
+  }
+
+  function moveLevel(d){
+    if(!selected||selected.userData.locked)return;
+    const p=selected.position.clone();p.y+=d;
+    if(valid(selected,p,selected.userData.rot)){
+      selected.position.copy(p);selection.setFromObject(selected);updateUI();
+    }else toast('Место занято');
+  }
+
+  function removeSelected(){
+    if(!selected||selected.userData.locked)return;
+    const b=selected;select(null);blocks=blocks.filter(x=>x!==b);scene.remove(b);updateUI();
+  }
+
+  function toggleLock(){
+    if(!selected)return;
+    selected.userData.locked=!selected.userData.locked;
+    updateUI();
+    toast(selected.userData.locked?'Брусок закреплён':'Брусок разблокирован');
+  }
+
+  function copySelected(){
+    if(!selected||blocks.length>=TOTAL)return;
+    const r=selected.userData.rot;
+    const bottom=Math.max(0,bottomOf(selected));
+    addBlock(freeSpot(r,bottom),r);
+  }
+
+
+  function downloadBlob(blob,filename){
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function(){URL.revokeObjectURL(url);},1500);
+  }
+
+  function exportGLB(){
+    if(!blocks.length){
+      toast('Сначала добавь хотя бы один брусок');
+      return;
+    }
+    if(typeof THREE.GLTFExporter==='undefined'){
+      toast('Экспортёр GLB не загрузился');
+      return;
+    }
+
+    const exportRoot=new THREE.Group();
+    exportRoot.name='BruskiTower';
+
+    blocks.forEach(function(block,index){
+      block.updateMatrixWorld(true);
+      const sourceMesh=block.children[0];
+
+      const mesh=new THREE.Mesh(
+        sourceMesh.geometry.clone(),
+        new THREE.MeshStandardMaterial({
+          color:0xc99052,
+          roughness:0.72,
+          metalness:0
+        })
+      );
+      mesh.name='Block_'+String(index+1).padStart(2,'0');
+
+      block.matrixWorld.decompose(mesh.position,mesh.quaternion,mesh.scale);
+      exportRoot.add(mesh);
+    });
+
+    const exporter=new THREE.GLTFExporter();
+    exporter.parse(
+      exportRoot,
+      function(result){
+        if(result instanceof ArrayBuffer){
+          downloadBlob(
+            new Blob([result],{type:'model/gltf-binary'}),
+            'bruski_tower.glb'
+          );
+          toast('Модель .GLB скачана');
+        }else{
+          const json=JSON.stringify(result);
+          downloadBlob(
+            new Blob([json],{type:'model/gltf+json'}),
+            'bruski_tower.gltf'
+          );
+          toast('Модель скачана');
+        }
+      },
+      function(error){
+        console.error(error);
+        toast('Ошибка экспорта модели');
+      },
+      {binary:true,onlyVisible:true,trs:false}
+    );
+  }
+
+  document.getElementById('addBtn').onclick=function(){addBlock();};
+  document.getElementById('downloadModelBtn').onclick=exportGLB;
+  function bindAngle(axis){
+    const A=axis.toUpperCase();
+    const range=document.getElementById('rot'+A+'Range');
+    const num=document.getElementById('rot'+A+'Num');
+
+    range.addEventListener('input',function(){
+      setRotationAxis(axis,Number(range.value));
+    });
+    num.addEventListener('change',function(){
+      setRotationAxis(axis,Number(num.value));
+    });
+    num.addEventListener('keydown',function(e){
+      if(e.key==='Enter'){ num.blur(); }
+    });
+  }
+  bindAngle('x');bindAngle('y');bindAngle('z');
+  document.getElementById('resetRotBtn').onclick=resetRotation;
+  document.getElementById('upBtn').onclick=function(){moveLevel(STEP_Y);};
+  document.getElementById('downBtn').onclick=function(){moveLevel(-STEP_Y);};
+  document.getElementById('copyBtn').onclick=copySelected;
+  document.getElementById('lockBtn').onclick=toggleLock;
+  document.getElementById('removeBtn').onclick=removeSelected;
+  document.getElementById('resetBtn').onclick=function(){
+    blocks.slice().forEach(b=>scene.remove(b));blocks=[];nextId=1;select(null);updateUI();
+  };
+
+  const views=[
+    [[13,12,15],[0,2,0]],
+    [[0,18,.01],[0,0,0]],
+    [[16,7,0],[0,2,0]],
+    [[10,9,10],[0,3,0]]
+  ];
+  let viewIndex=0;
+  document.getElementById('viewBtn').onclick=function(){
+    viewIndex=(viewIndex+1)%views.length;
+    const v=views[viewIndex];
+    camera.position.set(v[0][0],v[0][1],v[0][2]);
+    controls.target.set(v[1][0],v[1][1],v[1][2]);controls.update();
+  };
+
+  const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();
+  const plane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
+  const hit=new THREE.Vector3(),offset=new THREE.Vector3();
+  let dragging=false,dragBlock=null,lastGood=new THREE.Vector3();
+
+  function setRay(e){
+    const r=renderer.domElement.getBoundingClientRect();
+    mouse.x=((e.clientX-r.left)/r.width)*2-1;
+    mouse.y=-((e.clientY-r.top)/r.height)*2+1;
+    ray.setFromCamera(mouse,camera);
+  }
+
+  function blockOf(o){
+    while(o){
+      if(o.userData&&o.userData.isBlock)return o;
+      if(o.userData&&o.userData.block)return o.userData.block;
+      o=o.parent;
+    }
+    return null;
+  }
+
+  renderer.domElement.addEventListener('pointerdown',function(e){
+    setRay(e);
+    const hits=ray.intersectObjects(blocks,true);
+    if(!hits.length)return;
+    const b=blockOf(hits[0].object);
+    if(!b)return;
+    select(b);
+
+    // Locked blocks can still be selected, but cannot be dragged.
+    if(b.userData.locked){
+      dragBlock=null;
+      dragging=false;
+      controls.enabled=true;
+      return;
+    }
+
+    dragBlock=b;dragging=true;lastGood.copy(b.position);controls.enabled=false;
+    plane.set(new THREE.Vector3(0,1,0),-b.position.y);
+    if(ray.ray.intersectPlane(plane,hit))offset.copy(b.position).sub(hit);
+    renderer.domElement.setPointerCapture&&renderer.domElement.setPointerCapture(e.pointerId);
+  });
+
+  renderer.domElement.addEventListener('pointermove',function(e){
+    if(!dragging||!dragBlock)return;
+    setRay(e);
+    plane.set(new THREE.Vector3(0,1,0),-dragBlock.position.y);
+    if(ray.ray.intersectPlane(plane,hit)){
+      const p=hit.clone().add(offset);
+      p.x=Math.round(p.x);p.z=Math.round(p.z);p.y=dragBlock.position.y;
+      if(valid(dragBlock,p,dragBlock.userData.rot)){
+        dragBlock.position.copy(p);lastGood.copy(p);
+      }
+      selection.setFromObject(dragBlock);updateUI();
+    }
+  });
+
+  function endDrag(){dragging=false;dragBlock=null;controls.enabled=true;}
+  renderer.domElement.addEventListener('pointerup',endDrag);
+  renderer.domElement.addEventListener('pointercancel',endDrag);
+
+  window.addEventListener('keydown',function(e){
+    if(e.key.toLowerCase()==='x'&&selected)setRotationAxis('x',selected.userData.rot.x+5);
+    if(e.key.toLowerCase()==='y'&&selected)setRotationAxis('y',selected.userData.rot.y+5);
+    if(e.key.toLowerCase()==='z'&&selected)setRotationAxis('z',selected.userData.rot.z+5);
+    if(e.key==='ArrowUp')moveLevel(STEP_Y);
+    if(e.key==='ArrowDown')moveLevel(-STEP_Y);
+    if((e.key==='Delete'||e.key==='Backspace')&&selected&&!selected.userData.locked)removeSelected();
+  });
+
+
+  function setUiHidden(hidden){
+    document.body.classList.toggle('ui-hidden',hidden);
+    document.querySelectorAll('.ui-hideable').forEach(function(el){
+      el.classList.toggle('ui-hidden',hidden);
+    });
+  }
+
+  document.getElementById('hideUiBtn').onclick=function(){
+    setUiHidden(true);
+  };
+
+  document.getElementById('showUiBtn').onclick=function(){
+    setUiHidden(false);
+  };
+
+  async function requestLandscape(){
+    try{
+      const root=document.documentElement;
+      if(!document.fullscreenElement && root.requestFullscreen){
+        await root.requestFullscreen();
+      }
+      if(screen.orientation && screen.orientation.lock){
+        await screen.orientation.lock('landscape');
+        toast('Горизонтальный режим включён');
+      }else{
+        toast('Поверни телефон горизонтально');
+      }
+    }catch(err){
+      console.warn('Landscape lock failed:',err);
+      toast('Браузер не разрешил автоповорот — поверни телефон вручную');
+    }
+  }
+
+  document.getElementById('landscapeBtn').onclick=requestLandscape;
+
+  window.addEventListener('resize',function(){
+    camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);
+  });
+
+  updateUI();
+  function loop(){
+    requestAnimationFrame(loop);controls.update();
+    if(selected&&selection.visible)selection.setFromObject(selected);
+    renderer.render(scene,camera);
+  }
+  loop();
+
+  addBlock();
+})();
 </script>
 </body>
 </html>
